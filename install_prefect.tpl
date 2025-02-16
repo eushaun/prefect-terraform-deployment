@@ -7,7 +7,7 @@
 ################################################
 
 # Logs: tail -F /var/log/cloud-init-output.log
-# Rendered script: cat /var/lib/cloud/instances/instance_id/user-data.txt
+# Rendered script: cat /var/lib/cloud/instance/user-data.txt
 
 # TODO: You only need to do this if you created a separate EBS volume 
 # Mount external block and use that instead of the root block device
@@ -18,6 +18,7 @@ mkdir /prefect-storage
 mount /dev/sdh /prefect-storage/
 echo "Successfully mounted EBS block..." >> /home/ubuntu/start.log
 
+chown ubuntu:ubuntu /prefect-storage
 cd /prefect-storage/
 
 # ---
@@ -47,7 +48,7 @@ echo "Successfully installed AWS CLI..." >> /home/ubuntu/start.log
 docker -v
 docker compose -v
 service docker start
-usermod -aG docker $USER
+sudo -u ubuntu usermod -aG docker $USER
 
 # TODO: This is only needed if you set up a different EBS volume
 # Set Docker storage to the mounted volume using a symlink
@@ -61,7 +62,7 @@ systemctl start docker
 echo "Successfully started docker service..." >> /home/ubuntu/start.log
 
 # Install Prefect
-python3.11 -m venv .prefect
+sudo -u ubuntu python3.11 -m venv .prefect
 source .prefect/bin/activate
 pip install prefect
 pip install prefect-aws
@@ -101,6 +102,7 @@ echo "Successfully started prefect server and work pool..." >> /home/ubuntu/star
 # Docker uses up storage very quickly (I noticed about 300MB extra was consumed after each flow run)
 # You can set up a cron job to system prune hourly
 (crontab -l ; echo "0 * * * * (sudo /usr/bin/docker system prune -f) 2>&1 | logger -t dockerPrune") | crontab - # Check logs using `grep 'dockerPrune' /var/log/syslog`
+(crontab -l ; echo "@reboot cd /prefect-storage/; source .prefect/bin/activate; prefect server start &;") | crontab -
 
 echo "Done executing initialization file" >> /home/ubuntu/start.log
 echo "cd /prefect-storage/; source .prefect/bin/activate" >> /home/ubuntu/.bashrc
