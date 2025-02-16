@@ -38,7 +38,7 @@ variable "security_group_name" {
 variable "storage_size_gb" {
   description = "The size of the EBS volume in GB"
   type        = number
-  default     = 20
+  default     = 30
 }
 
 variable "ebs_volume_type" {
